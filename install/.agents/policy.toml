@@ -1,0 +1,40 @@
+# Soyuz-Apollo permission policy (ADR D16). Source for the client adapters that `python sa.py sync` generates.
+# {archive} = paths.archive from .agents/config/instance.toml; when empty, <installation>-archive next to the installation.
+# Paths in write_deny are relative to the installation root.
+
+[read_deny]
+# B1, B3
+paths = ["{archive}"]
+globs = ["**/.env", "**/.env.*", "**/*.key", "**/*.pem"]
+
+[write_deny]
+# B6: no hand edits; python sa.py updates generated files
+paths = [".agents", "AGENTS.md", "sa.py"]
+
+[[command_deny]]
+prefix = ["git", "push"]
+why = "B4: push only on an explicit owner command"
+
+[[command_deny]]
+prefix = ["git", "commit"]
+why = "B4: commit with python sa.py commit"
+
+[[command_deny]]
+prefix = ["git", "clean"]
+why = "B4"
+
+[[command_deny]]
+prefix = ["git", "reset", "--hard"]
+why = "B4"
+
+[[command_deny]]
+prefix = ["git", "rebase"]
+why = "B4"
+
+[[command_ask]]
+prefix = ["rm", "-rf"]
+why = "B5: deletion beyond the current task needs the owner"
+
+[[command_ask]]
+prefix = ["Remove-Item", "-Recurse"]
+why = "B5: deletion beyond the current task needs the owner"

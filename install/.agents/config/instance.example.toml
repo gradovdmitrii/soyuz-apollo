@@ -1,0 +1,11 @@
+# Soyuz-Apollo installation settings.
+# `python sa.py init` copies this file to instance.toml (not tracked by Git) and fills `name`.
+
+[installation]
+name = ""
+owner = ""
+automatic_memory = false  # placeholder: the framework has no automatic memory yet
+
+[paths]
+archive = ""  # absolute path outside the installation; empty = <installation>-archive next to it
+backup = ""   # absolute path for `python sa.py backup`; empty = <installation>-backup next to it

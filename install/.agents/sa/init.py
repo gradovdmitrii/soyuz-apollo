@@ -5,16 +5,17 @@ description: Prepares a fresh installation (core repository, instance.toml, work
 type: script
 inputs: optional project name (kebab-case), --system, --adopt
 outputs: created or adopted paths and commit hashes on stdout; exit 0 ok, 1 refused, 2 error
-side_effects: creates folders and files; git init, soyuz-apollo.managed and local Git settings, a first commit in .agents/ or in the new project; runs sync; --adopt writes only the project's .git/config
+side_effects: creates folders and files; git init, soyuz-apollo.managed and local Git settings, a first commit in .agents/ or in the new project; runs sync; removes package-only files update.py and release-manifest.json from the root; --adopt writes only the project's .git/config
 destructive: false
 requires_owner: false
-version: 0.2.0
+version: 0.3.0
 origin: Soyuz-Apollo Framework | by Dmitrii Gradov | 2026-10
 ---
 """
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -23,6 +24,32 @@ from .common import Refused, say
 
 WORKSPACE = ("projects", "system-projects", "port/inbox", "port/outbox", "port/large-files")
 REPO_FILES = (".gitignore", ".gitattributes", ".editorconfig")
+PACKAGE_ONLY = ("update.py", "release-manifest.json")
+
+
+def is_package_file(path: Path) -> bool:
+    """True only for the release tools: update.py with its passport, or a release manifest (U13)."""
+    if common.is_link(path) or not path.is_file():
+        return False
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeDecodeError):
+        return False
+    if path.name == "update.py":
+        return "\nname: s-a-update\n" in text[:400]
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return False
+    return isinstance(data, dict) and data.get("manifest") == 1 and isinstance(data.get("kit"), dict)
+
+
+def clean_package_files(root: Path) -> None:
+    """Remove release-package files that unpacking leaves in the root; any other file of that name stays."""
+    for name in PACKAGE_ONLY:
+        path = root / name
+        if is_package_file(path):
+            path.unlink()
 
 
 def run_installation(root: Path) -> int:
@@ -33,7 +60,10 @@ def run_installation(root: Path) -> int:
         for repo in repos:
             if ownership.state(root, repo) == ownership.GENERATED and common.configure_repo(repo):
                 say(f"configured: {common.rel(root, repo)} (local Git settings)")
-        return sync.run(root, guarded=True)
+        code = sync.run(root, guarded=True)
+        if code == 0:
+            clean_package_files(root)
+        return code
     in_the_way = [area for area in WORKSPACE if not workspace_ok(root, area)]
     if in_the_way:
         raise Refused(f"A file or link is in the way of the workspace folders {', '.join(in_the_way)}; "
@@ -62,6 +92,8 @@ def run_installation(root: Path) -> int:
         common.git_ok("commit", "-q", "-F", "-", repo=core, data=message.encode("utf-8"))
         created.append(f".agents/.git (commit {common.git_ok('rev-parse', '--short', 'HEAD', repo=core)})")
     code = sync.run(root, guarded=True)
+    if code == 0:
+        clean_package_files(root)
     for item in created:
         say(f"created: {item}")
     say(f"init: installation ready at {root}; next: python sa.py init <name>")

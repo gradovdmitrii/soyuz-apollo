@@ -355,7 +355,12 @@ def check_repo_settings(report: Report, root: Path, repo: Path) -> None:
     name, attrs = common.rel(root, repo), repo / ".gitattributes"
     if not attrs.is_file() or "* text=auto eol=lf" not in common.read_text(attrs).splitlines():
         report.add("ERROR", "REPO-EOL", name, ".gitattributes must contain the line: * text=auto eol=lf")
-    config = common.git_config(repo)
+    listed, reason = git_read("config", "--list", "-z", repo=repo)
+    if listed is None:
+        report.add("WARN", "REPO-GITCFG", name, f"Git settings could not be checked: {reason}")
+        return
+    config = {key.lower(): value.strip()
+              for key, _, value in (item.partition("\n") for item in listed.split("\0") if item)}
     for key, value in common.REPO_CONFIG:
         if config.get(key, "").lower() != value and (key != "core.longpaths" or os.name == "nt"):
             level = "WARN" if key == "core.longpaths" else "INFO"
@@ -363,13 +368,24 @@ def check_repo_settings(report: Report, root: Path, repo: Path) -> None:
 
 
 def dirty_files(report: Report, root: Path, repo: Path) -> list[str]:
-    result = common.git("--no-optional-locks", "-c", "core.quotepath=false", "status", "--porcelain",
-                        "--untracked-files=all", repo=repo)
-    if result.returncode:
+    listed, reason = git_read("--no-optional-locks", "-c", "core.quotepath=false", "status", "--porcelain",
+                              "--untracked-files=all", repo=repo)
+    if listed is None:
         report.add("WARN", "CORE-DIRTY" if repo.name == ".agents" else "PROJ-DIRTY", common.rel(root, repo),
-                   f"git status failed: {common.git_message(result)}")
+                   f"uncommitted changes could not be checked: {reason}")
         return []
-    return [line[3:] for line in result.stdout.splitlines() if line.strip()]
+    return [line[3:] for line in listed.splitlines() if line.strip()]
+
+
+def git_read(*args: str, repo: Path) -> tuple[str | None, str]:
+    """Run a read-only git command: (stdout, "") or (None, reason) when Git cannot run there or fails (U12)."""
+    try:
+        result = common.git(*args, repo=repo)
+    except OSError as exc:
+        return None, exc.strerror or str(exc)
+    if result.returncode:
+        return None, common.git_message(result)
+    return result.stdout, ""
 
 
 def check_links(report: Report, root: Path) -> None:

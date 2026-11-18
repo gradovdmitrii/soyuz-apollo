@@ -42,23 +42,30 @@ This is an early public release, and we describe it as it is.
 
 - **Platform.** Windows 11, Python 3.11 or later, Git with `user.name` and `user.email` set. Linux and macOS are not supported yet.
 - **Clients.** Antigravity, Codex, Claude Code, DeepSeek Harness, Hermes Agent. The status of each client and mode, verified by a trial or only claimed by the vendor, is recorded in [install/.agents/docs/compatibility.md](install/.agents/docs/compatibility.md). Read it as a table of facts, not as a promise: we do not claim "works with any agent".
-- **No skills yet.** 0.2.0 is a frame: the folder structure, the rules, and `sa.py`. System skills will come in later releases.
+- **No skills yet.** 0.3.0 is a frame: the folder structure, the rules, `sa.py`, and `update.py`. System skills will come in later releases.
 - **Archive protection.** The rules in `AGENTS.md` are conventions. The lock on the archive comes from the client's permission settings, and `sa.py` writes them only for Claude Code and Codex. Only Claude Code has been verified by a trial; in Codex the settings apply only if the folder is marked as trusted, and that has not been verified by a trial yet. In the other clients the archive is protected by the text of the rules alone; the owner applies the settings fragments for them by hand.
 - **Memory.** The AI does not remember everything by itself. Continuity is kept by the project files, above all `handoff.md`.
 
 ## Quick start
 
-1. Download the installation archive `soyuz-apollo-0.2.0.zip` from the [Releases page](https://github.com/gradovdmitrii/soyuz-apollo/releases). Do not take `Source code (zip)`: it holds the sources, not the installation.
-2. Unzip it into a new empty folder with a Latin path, outside OneDrive and outside other Git repositories, for example `C:\soyuz-apollo\`.
-3. In that folder run `python sa.py init`.
-4. Open your AI client in exactly that folder. In Codex, mark it as trusted first.
-
-A first message to the client could be:
+Create an empty folder with a Latin kebab-case path outside OneDrive and outside other Git repositories (for example, `C:\soyuz-apollo\`). In Codex, mark it as trusted first. Open your AI client in that folder and send:
 
 ```text
-Create a project health with python sa.py init health. Goal: keep a meal plan for the month.
-Describe the goal in the project's AGENTS.md and tell me what you did.
+Install Soyuz-Apollo in this folder following the README instructions: https://github.com/gradovdmitrii/soyuz-apollo
 ```
+
+If you already unpacked `soyuz-apollo-0.3.0.zip` from the [Releases page](https://github.com/gradovdmitrii/soyuz-apollo/releases) (not `Source code (zip)`) into that folder yourself, send: `Install Soyuz-Apollo following the instructions in README.en.md`.
+
+To update an existing installation (0.2.0 or 0.2.0-alpha.2) in place, send (in a chat outside the installation, or after temporarily switching permissions in the client UI):
+
+```text
+Update the Soyuz-Apollo installation in <installation path> following the README instructions: https://github.com/gradovdmitrii/soyuz-apollo
+```
+
+**For the agent (do not edit core files by hand; only run `sa.py` and `update.py`):**
+
+- **Install.** Verify that the folder is outside OneDrive and Git. Follow the [installation instructions](install/README.en.md). After writing the first project's goal, run `python sa.py commit projects/<name>/AGENTS.md -m "Set project purpose"`, then `python sa.py doctor`. Ask the owner to open a new chat.
+- **Update.** Download the ZIP and `.sha256` from Releases, check the checksum, and unpack outside the installation. Run `verify`, `plan`, and `apply` as shown in the [instructions](install/README.en.md#9-updating). Ask the owner about conflicts. On `RESTART-CHAT required` or `recommended`, ask the owner to open a new chat.
 
 Details, daily commands, and updating: [install/README.en.md](install/README.en.md).
 

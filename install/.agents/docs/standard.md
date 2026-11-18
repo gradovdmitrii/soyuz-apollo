@@ -271,7 +271,8 @@ tmp/
   - a link in `.claude/skills/` is managed only when its target is `.agents/skills/<same name>`; a link with any other target is owner content, even when it is broken;
   - a Git repository is managed only when its local `.git/config` has `soyuz-apollo.managed = true`, which `sa init` sets when it creates the repository. Only then does `sa` set its local Git keys. The first commit signed `Agent: s-a-satellite` is provenance, not proof.
 - New outputs (backup and archive folders) are created as new folders only; an existing target is a refusal.
-- Taking over an owner file is allowed only where a command documents it, and only on an explicit owner command. In 0.2 there are exactly two: `python sa.py sync --force` (the root `AGENTS.md` only) and `python sa.py init <name> --adopt` (marks an existing project repository as managed and sets its Git keys; changes no files). Agents never pass these flags on their own.
+- Taking over an owner file is allowed only where a command documents it, and only on an explicit owner command. There are exactly three: `python update.py apply --conflicts replace` from a release package (release files the owner edited; the owner's version goes to the rollback folder), `python sa.py sync --force` (the root `AGENTS.md` only), and `python sa.py init <name> --adopt` (marks an existing project repository as managed and sets its Git keys; changes no files). Agents never pass these flags on their own.
+- The updater `update.py` of a release package replaces or deletes a release file only when its SHA-256 equals the hash that the package records for the installed version. Any other content is a conflict that only an explicit owner choice resolves. The installation itself holds no manifest.
 - Never merge foreign configuration files. Never keep a separate manifest for ownership.
 
 ## IF UNSURE

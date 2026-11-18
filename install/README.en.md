@@ -6,27 +6,23 @@ Soyuz-Apollo is a folder in which you and several AI clients work on your projec
 
 ## 2. Install
 
-You need Windows 11, Python 3.11 or later, and Git with `user.name` and `user.email` set.
+You need Windows 11, Python 3.11 or later, and Git.
 
-1. Create a new empty folder with an ASCII kebab-case path, for example `C:\soyuz-apollo-november\`. It must be outside OneDrive and outside any Git repository.
-2. Unpack the installation archive `soyuz-apollo-<version>.zip` from the Releases page into it (not `Source code (zip)`: that holds the sources).
-3. In that folder, run:
+1. Create an empty folder with an ASCII kebab-case path outside OneDrive and outside any Git repository, for example `C:\soyuz-apollo-november\`. In Codex, mark it as trusted before starting.
+2. **Open your AI client in the installation root itself** and send the prompt card:
 
    ```text
-   python sa.py init
+   Install Soyuz-Apollo in this folder following the README instructions: https://github.com/gradovdmitrii/soyuz-apollo
    ```
 
-   This prepares the core repository, creates the work folders, and writes the root `AGENTS.md`.
-4. If you work in Codex, mark the installation folder as trusted before the first session: according to the Codex documentation, its permission settings do not apply without it.
-5. **Open your AI client in the installation root itself** — the folder that holds `sa.py` and the root `AGENTS.md`, not a project inside it. A client takes the rules and permission settings from the folder it is opened in; opened in a project, it may not see them (confirmed by a trial for Claude Code; for other clients see section 7).
+   If you already unpacked `soyuz-apollo-<version>.zip` from the Releases page (not `Source code (zip)`) into that folder yourself, send: `Install Soyuz-Apollo following the instructions in README.en.md`.
+3. **For the agent.** Verify that the folder is outside OneDrive and Git. If `sa.py` is absent, download the ZIP and `.sha256` from Releases, verify the checksum, and unpack here. Ask up to two questions: Git name and email if missing, then the first project's kebab-case name and goal. Run `python sa.py init` and `python sa.py init <name>`. Write the goal below the generated header and run `python sa.py commit projects/<name>/AGENTS.md -m "Set project purpose"`. Run `python sa.py doctor` and ask the owner to open a **new chat** in the installation root.
 
 ## 3. First session
 
-1. Open the client in the installation root (step 5 above).
-2. Write a first message, for example: "Read the installation rules and tell me which project we are working on."
-3. A correct agent reads the root `AGENTS.md` and `.agents/AGENTS.md`, briefly restates the boundaries, and asks which project to work in. If there is no project yet, it offers to create one. If the agent does not know the rules, or goes straight to files outside a project, stop it and check that the client is open in the root.
-4. Create your first project: `python sa.py init notes`. Then describe its purpose in `projects/notes/AGENTS.md`, below the generated header, and ask the agent to work in that project.
-5. Commits. At the end of a task the agent commits the work with `python sa.py commit`. If the client allows commits only on your request, the agent ends the task by offering the exact commit command, and you run it yourself or ask the agent to run it.
+1. Open a new chat in the installation root (the folder that holds `sa.py` and the root `AGENTS.md`). A client takes the rules and permission settings from the folder it is opened in; opened in a project, it may not see them (confirmed by a trial for Claude Code; for other clients see section 7).
+2. Write, for example: "Read the installation rules and continue the `<name>` project." A correct agent reads the root `AGENTS.md`, `.agents/AGENTS.md`, and the project's `AGENTS.md`, and briefly restates the boundaries and task.
+3. At the end of a task the agent commits the work with `python sa.py commit`. If the client allows commits only on your request, the agent ends the task by offering the exact commit command.
 
 ## 4. Daily work
 
@@ -69,13 +65,25 @@ In Antigravity, Hermes, and DeepSeek Harness there is no technical lock on the a
 
 ## 9. Updating
 
-Release 0.2 has no automatic update. To move to a new release:
+From release 0.3.0 an installation is updated in place: the folder path, projects, Port and settings stay (supported from 0.2.0 and 0.2.0-alpha.2). Send this prompt card to your agent (in a chat outside the installation, or after temporarily switching permissions in the client UI, since the `s-a` profile in Codex makes `.agents/` read-only):
 
-1. Run `python sa.py backup`.
-2. Install the new release into a new empty folder and run `python sa.py init` there.
-3. Move your projects into the new `projects/` and `system-projects/` as whole folders: selecting the contents (Ctrl+A in Explorer) skips the hidden `.git`. Or restore a project from its bundle: `git clone <backup>/projects-<name>.bundle projects/<name>`. Take over a project from the old installation with `python sa.py init <name> --adopt`.
-4. Run `python sa.py sync` and `python sa.py doctor`; no project may show a `PROJ-NOGIT` error.
-5. Keep the old folder until you have checked your projects in the new one.
+```text
+Update the Soyuz-Apollo installation in <installation path> following the README instructions: https://github.com/gradovdmitrii/soyuz-apollo
+```
+
+**For the agent (update; do not edit files by hand, only run `update.py`):**
+
+1. Download the ZIP and `.sha256` from Releases, verify the checksum, and unpack into a separate temporary folder outside the installation.
+2. In that folder run:
+
+   ```text
+   python update.py verify --zip <archive>
+   python update.py plan --target <installation path>
+   python update.py apply --target <installation path>
+   ```
+
+3. `plan` writes nothing. Ask the owner how to resolve conflicts: replace (`--conflicts replace`, default, with a backup) or keep (`--conflicts keep`).
+4. A replacement or `sync` failure triggers automatic recovery. After an interruption, start with `python update.py rollback --target <installation path>`. New edits block rollback. On `RESTART-CHAT required` or `recommended`, ask the owner to open a new chat.
 
 ## 10. Limits
 

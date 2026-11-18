@@ -6,6 +6,8 @@
 
 [English version](README.en.md)
 
+[Telegram @Sir_Dmitrii](https://t.me/Sir_Dmitrii) · [gradovdmitrii@gmail.com](mailto:gradovdmitrii@gmail.com) · [Поддержать проект](#поддержать-проект)
+
 ## Зачем
 
 - **Начать в одном клиенте, закончить в другом.** Проект не привязан к вендору: правила и результаты лежат в папке, а не в чате. Сменился клиент, закончилась подписка, недоступен провайдер — вы открываете ту же папку в другом клиенте и продолжаете.
@@ -97,4 +99,15 @@ soyuz-apollo/
 
 Дмитрий Градов, вместе с Antigravity, Codex и Claude Code.
 
-Сайт: [soyuz-apollo.net](https://soyuz-apollo.net) · Почта: gradovdmitrii@gmail.com
+[Сайт проекта](https://soyuz-apollo.net)
+
+## Поддержать проект
+
+Я развиваю Союз-Аполлон самостоятельно, почти без бюджета. Если проект вам полезен и вы хотите помочь с его развитием, можно отправить донат.
+
+- **Ethereum, Arbitrum, BNB Smart Chain** — `0x6DB16894527a3Ce3a441239f21137ed69B51E867`
+- **Solana** — `2PiTf8CME2gyyYNevLkNngt9VrAoBNbzyrVvsbwGKCjh`
+- **TRON** — `TKtQzXYoYzehje2AHmtHMvAp2ncPdyQZ9Q`
+- **TON** — `UQAaAJTM_HzHGzu1j5_Gcusvj3FozYTXNlzyu21wACpI-6je`
+
+Перед отправкой проверьте, что сеть перевода совпадает с выбранной сетью в списке.

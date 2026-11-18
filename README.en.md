@@ -6,6 +6,8 @@ Soyuz-Apollo (S-A) is a file framework: one folder, shared rules for several AI 
 
 [Русская версия](README.md)
 
+[Telegram @Sir_Dmitrii](https://t.me/Sir_Dmitrii) · [gradovdmitrii@gmail.com](mailto:gradovdmitrii@gmail.com) · [Support the project](#support-the-project)
+
 ## Why
 
 - **Start in one client, finish in another.** A project is not tied to a vendor: the rules and results live in the folder, not in a chat. A client changed, a subscription ended, a provider became unavailable: you open the same folder in another client and carry on.
@@ -100,4 +102,15 @@ We like the image of a home space workshop: a modular station where independent 
 
 Dmitrii Gradov, together with Antigravity, Codex and Claude Code.
 
-Site: [soyuz-apollo.net](https://soyuz-apollo.net) · Email: gradovdmitrii@gmail.com
+[Project website](https://soyuz-apollo.net)
+
+## Support the project
+
+I develop Soyuz-Apollo on my own, with almost no budget. If you find it useful and want to help keep it going, you can make a donation.
+
+- **Ethereum, Arbitrum, BNB Smart Chain** — `0x6DB16894527a3Ce3a441239f21137ed69B51E867`
+- **Solana** — `2PiTf8CME2gyyYNevLkNngt9VrAoBNbzyrVvsbwGKCjh`
+- **TRON** — `TKtQzXYoYzehje2AHmtHMvAp2ncPdyQZ9Q`
+- **TON** — `UQAaAJTM_HzHGzu1j5_Gcusvj3FozYTXNlzyu21wACpI-6je`
+
+Before sending, check that the transfer network matches the one you chose from the list.

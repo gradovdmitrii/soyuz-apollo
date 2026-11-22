@@ -15,7 +15,7 @@ You need Windows 11, Python 3.11 or later, and Git.
    Install Soyuz-Apollo in this folder following the README instructions: https://github.com/gradovdmitrii/soyuz-apollo
    ```
 
-   If you already unpacked `soyuz-apollo-<version>.zip` from the Releases page (not `Source code (zip)`) into that folder yourself, send: `Install Soyuz-Apollo following the instructions in README.en.md`.
+   If you already unpacked `soyuz-apollo-0.4.0.zip` from the Releases page (not `Source code (zip)`) into that folder yourself, send: `Install Soyuz-Apollo following the instructions in README.en.md`.
 3. **For the agent.** Verify that the folder is outside OneDrive and Git. If `sa.py` is absent, download the ZIP and `.sha256` from Releases, verify the checksum, and unpack here. Ask up to two questions: Git name and email if missing, then the first project's kebab-case name and goal. Run `python sa.py init` and `python sa.py init <name>`. Write the goal below the generated header and run `python sa.py commit projects/<name>/AGENTS.md -m "Set project purpose"`. Run `python sa.py doctor` and ask the owner to open a **new chat** in the installation root.
 
 ## 3. First session
@@ -31,8 +31,8 @@ You need Windows 11, Python 3.11 or later, and Git.
 | Create a project | `python sa.py init <name>` (add `--system` for a system project) |
 | Work | Inside `projects/<name>/`; describe the project in its `AGENTS.md` |
 | Commit | `python sa.py commit <paths> -m "<summary>"` |
-| Check | `python sa.py doctor`: checks the core and the structure of projects (folder, `AGENTS.md`, Git repository), not their content; `python sa.py doctor --deep <name>` checks the content of one project |
-| Back up | `python sa.py backup` |
+| Check | `python sa.py doctor` checks the core, required document sections and project structure. Add `--deep <name>` to check one project's content. `INCOMPLETE` means some Git checks could not run. |
+| Back up | `python sa.py backup`. The ZIP omits each project's top-level `tmp/` directory and lists the omissions in `backup-report.txt`. |
 | Move to the archive (you only) | `python sa.py archive add <path>` (only from `projects/` and `system-projects/`); the original is deleted only with `--remove` |
 
 Project names are kebab-case ASCII (`health`, `site-redesign`); your notes inside a project may use any name.
@@ -65,7 +65,7 @@ In Antigravity, Hermes, and DeepSeek Harness there is no technical lock on the a
 
 ## 9. Updating
 
-From release 0.3.0 an installation is updated in place: the folder path, projects, Port and settings stay (supported from 0.2.0 and 0.2.0-alpha.2). Send this prompt card to your agent (in a chat outside the installation, or after temporarily switching permissions in the client UI, since the `s-a` profile in Codex makes `.agents/` read-only):
+You can update in place to 0.4.0 from 0.3.0, 0.2.0 or 0.2.0-alpha.2. The update preserves the folder path, projects, Port and settings. Repeated `sa.py init` also preserves `update.py` and `release-manifest.json` in the installation root. Send this prompt card in a chat outside the installation or after temporarily switching permissions in the client UI (the `s-a` profile in Codex makes `.agents/` read-only):
 
 ```text
 Update the Soyuz-Apollo installation in <installation path> following the README instructions: https://github.com/gradovdmitrii/soyuz-apollo

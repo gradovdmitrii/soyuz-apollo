@@ -1,14 +1,14 @@
 """
 ---
 name: s-a-backup
-description: Backs up the installation outside it - a verified git bundle per repository plus a ZIP of every file, links skipped.
+description: Backs up the installation outside it with verified Git bundles and a ZIP that skips links, bytecode caches and project tmp directories.
 type: script
 inputs: --dest DIR (default paths.backup from instance.toml, else <root>-backup next to the installation)
 outputs: <dest>/<timestamp>/ with *.bundle, installation.zip, backup-report.txt; exit 0 ok, 1 refused or a bundle failed
 side_effects: writes only into the destination folder outside the installation
 destructive: false
 requires_owner: false
-version: 0.2.0
+version: 0.4.0
 origin: Soyuz-Apollo Framework | by Dmitrii Gradov | 2026-10
 ---
 """
@@ -54,11 +54,13 @@ def run(root: Path, dest_arg: str | None) -> int:
         failed = failed or status != "verified"
         say(f"bundle {bundle.name}: {status}")
         lines.append(f"  {bundle.name}: {status} ({name})")
-    files, links, errors = write_zip(root, out / "installation.zip")
+    files, links, skipped_tmp, errors = write_zip(root, out / "installation.zip")
     size = (out / "installation.zip").stat().st_size
     say(f"zip installation.zip: {files} files, {size} bytes, {len(links)} links skipped")
     lines += ["", f"Archive: installation.zip, {size} bytes, {files} files", "Skipped links:"]
     lines += [f"  {link}" for link in links] or ["  none"]
+    lines.append("Skipped project tmp directories:")
+    lines += [f"  {name}" for name in skipped_tmp] or ["  none"]
     if errors:
         lines += ["Unreadable files (not in the zip):"] + [f"  {error}" for error in errors]
         say(f"WARN {len(errors)} unreadable files were left out; see backup-report.txt")
@@ -88,11 +90,20 @@ def repositories(root: Path) -> list[tuple[str, Path]]:
     return repos
 
 
-def write_zip(root: Path, target: Path) -> tuple[int, list[str], list[str]]:
-    """Zip every file under the root, .git included; links and __pycache__ are skipped."""
-    files, links, errors = 0, [], []
+def write_zip(root: Path, target: Path) -> tuple[int, list[str], list[str], list[str]]:
+    """Return the number of files stored, skipped links, skipped scratch directories, and read errors."""
+    files, links, skipped_tmp, errors = 0, [], [], []
+    project_areas = {root / area for area, _ in common.PROJECT_AREAS}
+
+    def keep(path: Path) -> bool:
+        if (path.name == "tmp" and path.parent.parent in project_areas
+                and not common.is_link(path) and path.is_dir()):
+            skipped_tmp.append(common.rel(root, path))
+            return False
+        return True
+
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED, allowZip64=True, strict_timestamps=False) as archive:
-        for path, kind in common.walk(root, skip=("__pycache__",)):
+        for path, kind in common.walk(root, skip=("__pycache__",), keep=keep):
             name = common.rel(root, path)
             if kind == "link":
                 links.append(name)
@@ -103,4 +114,4 @@ def write_zip(root: Path, target: Path) -> tuple[int, list[str], list[str]]:
                 errors.append(f"{name}: {exc.strerror or exc}")
                 continue
             files += kind == "file"
-    return files, links, errors
+    return files, links, skipped_tmp, errors

@@ -40,11 +40,11 @@ One small tool, `sa.py`, serves all of this: it creates projects, makes commits,
 
 ## What works today
 
-This is an early public release, and we describe it as it is.
+Version 0.4.0 defines how project subfolders share their parent's Git history and use rules linked from its `AGENTS.md`. When taking over a project, the agent accounts for every unfinished item in `handoff.md`.
 
 - **Platform.** Windows 11, Python 3.11 or later, Git with `user.name` and `user.email` set. Linux and macOS are not supported yet.
 - **Clients.** Antigravity, Codex, Claude Code, DeepSeek Harness, Hermes Agent. The status of each client and mode, verified by a trial or only claimed by the vendor, is recorded in [install/.agents/docs/compatibility.md](install/.agents/docs/compatibility.md). Read it as a table of facts, not as a promise: we do not claim "works with any agent".
-- **No skills yet.** 0.3.0 is a frame: the folder structure, the rules, `sa.py`, and `update.py`. System skills will come in later releases.
+- **Checks.** `doctor` checks required sections in core documents and skills. If some Git checks could not run, the summary says `INCOMPLETE`. Version 0.4.0 ships without built-in skills.
 - **Archive protection.** The rules in `AGENTS.md` are conventions. The lock on the archive comes from the client's permission settings, and `sa.py` writes them only for Claude Code and Codex. Only Claude Code has been verified by a trial; in Codex the settings apply only if the folder is marked as trusted, and that has not been verified by a trial yet. In the other clients the archive is protected by the text of the rules alone; the owner applies the settings fragments for them by hand.
 - **Memory.** The AI does not remember everything by itself. Continuity is kept by the project files, above all `handoff.md`.
 
@@ -56,9 +56,9 @@ Create an empty folder with a Latin kebab-case path outside OneDrive and outside
 Install Soyuz-Apollo in this folder following the README instructions: https://github.com/gradovdmitrii/soyuz-apollo
 ```
 
-If you already unpacked `soyuz-apollo-0.3.0.zip` from the [Releases page](https://github.com/gradovdmitrii/soyuz-apollo/releases) (not `Source code (zip)`) into that folder yourself, send: `Install Soyuz-Apollo following the instructions in README.en.md`.
+If you already unpacked `soyuz-apollo-0.4.0.zip` from the [release page](https://github.com/gradovdmitrii/soyuz-apollo/releases/tag/v0.4.0) (not `Source code (zip)`) into that folder yourself, send: `Install Soyuz-Apollo following the instructions in README.en.md`.
 
-To update an existing installation (0.2.0 or 0.2.0-alpha.2) in place, send (in a chat outside the installation, or after temporarily switching permissions in the client UI):
+To update an installation from 0.3.0, 0.2.0 or 0.2.0-alpha.2 in place, send this in a chat outside the installation or after temporarily switching permissions in the client UI:
 
 ```text
 Update the Soyuz-Apollo installation in <installation path> following the README instructions: https://github.com/gradovdmitrii/soyuz-apollo

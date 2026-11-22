@@ -5,7 +5,7 @@ type: reference
 audience: agent
 load: on-demand
 scope: installation
-version: 0.2.0
+version: 0.4.0
 origin: Soyuz-Apollo Framework | by Dmitrii Gradov | 2026-10
 ---
 
@@ -85,7 +85,11 @@ metadata:
 
 ### S4. Sections
 
-Use only these section names, in this order. Each type has required sections; add optional ones only when they have content. Never leave an empty section.
+Use these second-level headings in the order shown for core Markdown and every `SKILL.md` examined by `doctor`. Add optional sections when they have content. Fenced examples and the marked output body of a template are excluded from the heading check.
+
+A skill package's `README.md` and Markdown files under `references/` may use subject headings when their passport declares `scope: skill`. Core passport requirements in S1 still apply.
+
+`doctor` reports missing required headings as `ERROR SECTION`. Unexpected, duplicate, out-of-order or empty sections produce `WARN SECTION`.
 
 | Section | Holds |
 |---|---|
@@ -102,7 +106,7 @@ Use only these section names, in this order. Each type has required sections; ad
 |---|---|---|
 | `boundaries` | Purpose, MUST, IF UNSURE | - |
 | `guide` | Purpose, IF UNSURE | ROUTES, STEPS, DEFAULT, EXAMPLES, REFERENCES |
-| `procedure`, `skill` | Purpose, STEPS, IF UNSURE | MUST, DEFAULT, EXAMPLES, REFERENCES |
+| `procedure`, `skill` | Purpose, STEPS, EXAMPLES, IF UNSURE | MUST, DEFAULT, REFERENCES |
 | `reference` | Purpose, MUST | any |
 | `template` | Purpose | any |
 | `script` | passport in docstring (S9) | - |

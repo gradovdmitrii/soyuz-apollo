@@ -1,14 +1,14 @@
 """
 ---
 name: s-a-doctor
-description: Read-only health check of an installation - environment, guard, generated files, policy, archive path, client adapters, names, encodings, passports, sizes, repositories, links. Project content (names, encodings, passports, sizes) is checked only with --deep.
+description: Check an installation, including generated files, repositories, passports and document sections. Check project content with --deep.
 type: script
 inputs: optional project name for --deep (content checks inside that project)
-outputs: one line per finding "[ERROR|WARN|INFO] <code> <path>: <message>" and a summary; exit 0 ok, 1 any ERROR
+outputs: one line per finding and a summary with INCOMPLETE if Git checks were skipped; exit 1 for any ERROR, otherwise 0
 side_effects: none; never creates, changes or deletes files (git runs with --no-optional-locks)
 destructive: false
 requires_owner: false
-version: 0.2.0
+version: 0.4.0
 origin: Soyuz-Apollo Framework | by Dmitrii Gradov | 2026-10
 ---
 """
@@ -19,7 +19,7 @@ import os
 import re
 import sys
 import tomllib
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from . import adapters, common, ownership, policy
@@ -46,20 +46,42 @@ COMMENT = re.compile(r"<!--.*?-->", re.S)
 BUDGETS = {"AGENTS.md": 4096, ".agents/AGENTS.md": 6144}
 PROJECT_BUDGET = 6144
 SKILL_LINES = 500
+SECTION_ORDER = ("Purpose", "MUST", "ROUTES", "STEPS", "DEFAULT", "EXAMPLES", "IF UNSURE", "REFERENCES")
+PROCEDURE_SECTIONS = (("Purpose", "STEPS", "EXAMPLES", "IF UNSURE"), ("MUST", "DEFAULT", "REFERENCES"))
+# Required and optional H2 sections (S4).
+SECTION_RULES = {
+    "boundaries": (("Purpose", "MUST", "IF UNSURE"), ()),
+    "guide": (("Purpose", "IF UNSURE"), ("ROUTES", "STEPS", "DEFAULT", "EXAMPLES", "REFERENCES")),
+    "procedure": PROCEDURE_SECTIONS,
+    "skill": PROCEDURE_SECTIONS,
+    "reference": (("Purpose", "MUST"), SECTION_ORDER),
+    "template": (("Purpose",), SECTION_ORDER),
+}
+SECTION_HEADING = re.compile(r" {0,3}##(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$")
+SECTION_FENCE = re.compile(r" {0,3}(`{3,}|~{3,})(.*)")
 
 
 class Report:
     def __init__(self) -> None:
         self.items: list[tuple[str, str, str, str]] = []
+        self.incomplete = 0
 
     def add(self, level: str, code: str, path: str, message: str) -> None:
         self.items.append((level, code, path, message))
+
+    def unchecked(self, code: str, path: str, message: str) -> None:
+        self.incomplete += 1
+        self.add("WARN", code, path, message)
 
     def finish(self) -> int:
         for level, code, path, message in self.items:
             say(f"[{level}] {code} {path}: {message}")
         counts = [sum(1 for item in self.items if item[0] == level) for level in LEVELS]
-        say(f"doctor: {counts[0]} errors, {counts[1]} warnings, {counts[2]} info")
+        summary = f"doctor: {counts[0]} errors, {counts[1]} warnings, {counts[2]} info"
+        if self.incomplete:
+            noun = "check" if self.incomplete == 1 else "checks"
+            summary += f" (INCOMPLETE: {self.incomplete} {noun} could not run)"
+        say(summary)
         return 1 if counts[0] else 0
 
 
@@ -189,7 +211,7 @@ def check_tree(report: Report, root: Path, deep: list[Path] | None = None) -> No
     directly in its root); its content is checked only for the projects named in deep (doctor --deep)."""
     content_names = 0
     deep = deep or []
-    for path, kind in common.walk(root, keep=tracked_filter(root, deep)):
+    for path, kind in common.walk(root, keep=tracked_filter(report, root, deep)):
         parts = path.relative_to(root).parts
         name, area, rel = path.name, parts[0], "/".join(parts)
         suffix = path.suffix.lower()
@@ -215,17 +237,20 @@ def check_tree(report: Report, root: Path, deep: list[Path] | None = None) -> No
                    "deep-checked project(s) (owner content, allowed)")
 
 
-def tracked_filter(root: Path, deep: list[Path] | None = None) -> Callable[[Path], bool]:
+def tracked_filter(report: Report, root: Path, deep: list[Path]) -> Callable[[Path], bool]:
     """Skip the root __pycache__. Inside a project keep only what its Git tracks or would track (a folder without
     .git keeps nothing), and only its root level, except in the projects named in deep. A forbidden file name at the
     project root level is always kept, so R4 holds without .git or with ignored files."""
     fold = str.lower if os.name == "nt" else str
     allowed: set[str] = set()
-    for folder, _ in common.projects(root):
+    for folder in deep:
         if not (folder / ".git").exists() or not common.has_git():
             continue
         base = common.rel(root, folder)
-        listed = common.git("ls-files", "-z", "--cached", "--others", "--exclude-standard", repo=folder).stdout
+        listed, reason = git_read("ls-files", "-z", "--cached", "--others", "--exclude-standard", repo=folder)
+        if listed is None:
+            report.unchecked("PROJ-INDEX", base, f"project content could not be checked: {reason}")
+            continue
         for item in filter(None, listed.split("\0")):
             parts = fold(f"{base}/{item}").split("/")
             allowed.update("/".join(parts[:end]) for end in range(3, len(parts) + 1))
@@ -236,9 +261,9 @@ def tracked_filter(root: Path, deep: list[Path] | None = None) -> Callable[[Path
             return False
         if len(parts) < 3 or parts[0] not in ("projects", "system-projects"):
             return True
-        if len(parts) > 3 and not any(path.is_relative_to(folder) for folder in deep or []):
+        if len(parts) > 3 and not any(path.is_relative_to(folder) for folder in deep):
             return False
-        if len(parts) == 3 and (path.name.lower() in FORBIDDEN or not any(path.is_relative_to(f) for f in deep or [])):
+        if len(parts) == 3 and (path.name.lower() in FORBIDDEN or not any(path.is_relative_to(f) for f in deep)):
             return True  # project root level: the forbidden-name check never depends on Git
         return fold("/".join(parts)) in allowed
 
@@ -259,7 +284,7 @@ def valid_name(name: str) -> bool:
 
 
 def check_file(report: Report, path: Path, parts: tuple[str, ...], suffix: str) -> None:
-    """Encoding (ENC, ENC-CRLF), passport (PASSPORT) and SKILL.md size checks for one file."""
+    """Check encoding, passport, document sections and skill size for one file."""
     area, rel, name = parts[0], "/".join(parts), path.name
     encoded = suffix == ".md" or area == ".agents"
     kind = ("skill" if name == "SKILL.md" else "file" if suffix == ".md" and area == ".agents"
@@ -288,15 +313,16 @@ def check_file(report: Report, path: Path, parts: tuple[str, ...], suffix: str) 
             report.add("ERROR", "NAME", "/".join(parts[:-1]), "skill folder is not kebab-case ASCII")
         if text.count("\n") > SKILL_LINES:
             report.add("WARN", "SIZE", rel, f"{text.count(chr(10))} lines; budget {SKILL_LINES}")
-    problems = passport_problems(kind, text, path.parent.name)
-    if problems:
-        report.add("ERROR", "PASSPORT", rel, "; ".join(problems))
-
-
-def passport_problems(kind: str, text: str, folder: str) -> list[str]:
-    lines = common.python_passport(text) if kind == "script" else common.split_passport(text)[0]
+    if kind == "script":
+        lines, body = common.python_passport(text), ""
+    else:
+        lines, body = common.split_passport(text)
     if lines is None:
-        return ["missing passport" + (" in the module docstring (S9)" if kind == "script" else " (S2)")]
+        where = " in the module docstring (S9)" if kind == "script" else " (S2)"
+        report.add("ERROR", "PASSPORT", rel, "missing passport" + where)
+        if kind == "skill":
+            check_sections(report, rel, body, "skill")
+        return
     top, meta, bad = common.parse_passport(lines)
     problems = [f"malformed line {line.strip()!r}" for line in bad]
     problems += [f"field {key} must be one plain line without quotes or | > (S2)"
@@ -306,13 +332,89 @@ def passport_problems(kind: str, text: str, folder: str) -> list[str]:
                      for key in top if key not in SKILL_TOP]
         problems += field_problems(top, ("name", "description"))
         problems += field_problems(meta, PASSPORT_FIELDS[2:])
-        if top.get("name") != folder:
-            problems.append(f"name {top.get('name', '')!r} differs from the folder {folder!r}")
+        if top.get("name") != path.parent.name:
+            problems.append(f"name {top.get('name', '')!r} differs from the folder {path.parent.name!r}")
         if len(top.get("name", "")) > 64 or len(top.get("description", "")) > 1024:
             problems.append("name over 64 or description over 1024 characters")
     else:
         problems += field_problems(top, SCRIPT_FIELDS if kind == "script" else PASSPORT_FIELDS)
-    return problems
+    if problems:
+        report.add("ERROR", "PASSPORT", rel, "; ".join(problems))
+    if kind == "skill":
+        check_sections(report, rel, body, "skill")
+    elif kind == "file" and not (top.get("scope") == "skill" and skill_support_document(parts)):
+        check_sections(report, rel, body, top.get("type", ""))
+
+
+def skill_support_document(parts: tuple[str, ...]) -> bool:
+    """S4 allows subject headings in the README and references of an installed skill."""
+    return (parts[:2] == (".agents", "skills") and
+            ((len(parts) == 4 and parts[3] == "README.md") or (len(parts) >= 5 and parts[3] == "references")))
+
+
+def document_sections(body: str, template: bool) -> Iterator[tuple[str, bool]]:
+    """Yield each H2 and whether it contains text. A fenced example counts as content under its own heading."""
+    heading = None
+    has_text = in_template = in_comment = False
+    fence = ""
+    for line in body.splitlines():
+        stripped = line.strip()
+        if in_template:
+            in_template = stripped != common.TEMPLATE_END
+            continue
+        marker = SECTION_FENCE.fullmatch(line)
+        if fence:
+            if marker and marker[1].startswith(fence) and not marker[2].strip():
+                fence = ""
+            elif stripped:
+                has_text = True
+            continue
+        if in_comment:
+            in_comment = "-->" not in line
+            continue
+        if template and stripped == common.TEMPLATE_START:
+            in_template = True
+            continue
+        if stripped.startswith("<!--"):
+            in_comment = "-->" not in stripped[4:]
+            continue
+        if marker and (marker[1][0] == "~" or "`" not in marker[2]):
+            fence = marker[1]
+            continue
+        found = SECTION_HEADING.fullmatch(line)
+        if found:
+            if heading is not None:
+                yield heading, has_text
+            heading = found[1] or ""
+            has_text = False
+        elif stripped:
+            has_text = True
+    if heading is not None:
+        yield heading, has_text
+
+
+def check_sections(report: Report, rel: str, body: str, doc_type: str) -> None:
+    if doc_type not in SECTION_RULES:
+        return
+    required, optional = SECTION_RULES[doc_type]
+    seen = set()
+    last = -1
+    for heading, has_text in document_sections(body, doc_type == "template"):
+        if heading not in required and heading not in optional:
+            report.add("WARN", "SECTION", rel, f"unexpected section {heading!r} for {doc_type} (S4)")
+            continue
+        order = SECTION_ORDER.index(heading)
+        if heading in seen:
+            report.add("WARN", "SECTION", rel, f"duplicate section {heading!r} (S4)")
+        elif order < last:
+            report.add("WARN", "SECTION", rel, f"out-of-order section {heading!r} (S4)")
+        if not has_text:
+            report.add("WARN", "SECTION", rel, f"empty section {heading!r} (S4)")
+        seen.add(heading)
+        last = max(order, last)
+    for heading in required:
+        if heading not in seen:
+            report.add("ERROR", "SECTION", rel, f"missing required section {heading!r} (S4)")
 
 
 def field_problems(fields: dict[str, str], required: tuple[str, ...]) -> list[str]:
@@ -339,7 +441,15 @@ def check_repositories(report: Report, root: Path) -> None:
         if not (folder / ".git").exists():
             report.add("ERROR", "PROJ-NOGIT", name, "no .git; create projects with: python sa.py init <name>")
             continue
-        if ownership.state(root, folder) == ownership.GENERATED:
+        # Read the local marker separately: a missing key has a defined default, an unreadable config does not.
+        if ownership.blocked(root, folder):
+            managed, reason = "false", ""
+        else:
+            managed, reason = git_read("config", "--local", "--type=bool", "--default=false", "--get",
+                                       ownership.MANAGED_KEY, repo=folder)
+        if managed is None:
+            report.unchecked("REPO-GITCFG", name, f"repository management and Git settings could not be checked: {reason}")
+        elif managed.strip() == "true":
             check_repo_settings(report, root, folder)
         else:
             flags = " --system" if kind == "system project" else ""
@@ -357,7 +467,7 @@ def check_repo_settings(report: Report, root: Path, repo: Path) -> None:
         report.add("ERROR", "REPO-EOL", name, ".gitattributes must contain the line: * text=auto eol=lf")
     listed, reason = git_read("config", "--list", "-z", repo=repo)
     if listed is None:
-        report.add("WARN", "REPO-GITCFG", name, f"Git settings could not be checked: {reason}")
+        report.unchecked("REPO-GITCFG", name, f"Git settings could not be checked: {reason}")
         return
     config = {key.lower(): value.strip()
               for key, _, value in (item.partition("\n") for item in listed.split("\0") if item)}
@@ -371,8 +481,8 @@ def dirty_files(report: Report, root: Path, repo: Path) -> list[str]:
     listed, reason = git_read("--no-optional-locks", "-c", "core.quotepath=false", "status", "--porcelain",
                               "--untracked-files=all", repo=repo)
     if listed is None:
-        report.add("WARN", "CORE-DIRTY" if repo.name == ".agents" else "PROJ-DIRTY", common.rel(root, repo),
-                   f"uncommitted changes could not be checked: {reason}")
+        report.unchecked("CORE-DIRTY" if repo.name == ".agents" else "PROJ-DIRTY", common.rel(root, repo),
+                         f"uncommitted changes could not be checked: {reason}")
         return []
     return [line[3:] for line in listed.splitlines() if line.strip()]
 

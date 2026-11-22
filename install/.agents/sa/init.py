@@ -5,10 +5,10 @@ description: Prepares a fresh installation (core repository, instance.toml, work
 type: script
 inputs: optional project name (kebab-case), --system, --adopt
 outputs: created or adopted paths and commit hashes on stdout; exit 0 ok, 1 refused, 2 error
-side_effects: creates folders and files; git init, soyuz-apollo.managed and local Git settings, a first commit in .agents/ or in the new project; runs sync; removes package-only files update.py and release-manifest.json from the root; --adopt writes only the project's .git/config
+side_effects: creates folders and files; git init, soyuz-apollo.managed and local Git settings, a first commit in .agents/ or in the new project; runs sync; removes package-only files update.py and release-manifest.json after a successful fresh install; --adopt writes only the project's .git/config
 destructive: false
 requires_owner: false
-version: 0.3.0
+version: 0.4.0
 origin: Soyuz-Apollo Framework | by Dmitrii Gradov | 2026-10
 ---
 """
@@ -60,10 +60,7 @@ def run_installation(root: Path) -> int:
         for repo in repos:
             if ownership.state(root, repo) == ownership.GENERATED and common.configure_repo(repo):
                 say(f"configured: {common.rel(root, repo)} (local Git settings)")
-        code = sync.run(root, guarded=True)
-        if code == 0:
-            clean_package_files(root)
-        return code
+        return sync.run(root, guarded=True)
     in_the_way = [area for area in WORKSPACE if not workspace_ok(root, area)]
     if in_the_way:
         raise Refused(f"A file or link is in the way of the workspace folders {', '.join(in_the_way)}; "
